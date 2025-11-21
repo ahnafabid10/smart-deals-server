@@ -31,12 +31,46 @@ async function run() {
 
        const db = client.db("smart_db");
        const productsCollection = db.collection("products");
+       const bidsCollection = db.collection("bids")
+       const usersCollection = db.collection('users')
+
+       app.post('/users', async(req,res)=>{
+        const newUser = req.body
+
+        const email = req.body.email;
+        const query = {email: email}
+        const existingUser = await usersCollection.findOne(query)
+        if(existingUser){
+          req.send('user already exits. Do not need to insert again')
+        }
+        else{
+          const result = await usersCollection.insertOne(newUser)
+        res.send(result)
+        }
+        
+       })
 
        app.get('/products',async(req, res)=>{
-        const cursor = productsCollection.find();
+        // const cursor = productsCollection.find().sort({price_min: 1}).skip(2).limit(5);
+
+        console.log(req.query)
+        const email = req.query.email;
+        const query = {}
+        if(email){
+          query.email = email
+        }
+
+        const cursor = productsCollection.find(query).sort({price_min: 1})
         const result = await cursor.toArray();
         res.send(result)
        }) 
+
+       app.get('/latest-products',async(req, res)=>{
+        const cursor = productsCollection.find().sort({created_at: -1}).limit(6);
+        const result = await cursor.toArray();
+        res.send(result)
+       })
+
 
        app.get('/products/:id', async(req, res)=>{
         const id = req.params.id;
@@ -71,6 +105,32 @@ async function run() {
         const id = req.params.id
         const query = { _id: new ObjectId(id)}
         const result = await productsCollection.deleteOne(query)
+        res.send(result)
+       })
+
+       //bids related api
+       app.get('/bids', async(req, res)=>{
+        const email = req.query.email
+        const query = {};
+        if(email){
+          query.buyer_email =email
+        }
+
+        const cursor = bidsCollection.find(query);
+        const result = await cursor.toArray()
+        res.send(result)
+       })
+
+       app.get('/products/bids/:productId',async(req, res)=>{
+        const productId = req.params.productId;
+        const query = {product : productId}
+        const cursor = bidsCollection.find(query).sort({bid_price: -1})
+        res.send(result)
+       })
+
+       app.post('/bids', async(req, res)=>{
+        const newBid= req.body;
+        const result = await bidsCollection.insertOne(newBid)
         res.send(result)
        })
 
